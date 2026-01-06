@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: ドキュメント
+    url: https://github.com/YOUR_USERNAME/praise-todo/tree/main/docs
+    about: プロジェクトのドキュメントを確認
+  - name: アーキテクチャ設計書
+    url: https://github.com/YOUR_USERNAME/praise-todo/blob/main/docs/architecture.md
+    about: アーキテクチャ設計の詳細を確認

@@ -1,0 +1,106 @@
+name: バグ報告
+description: バグを報告するためのテンプレート
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## バグ報告テンプレート
+        
+        バグの詳細を記入してください。
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: バグの説明
+      description: バグの内容を詳しく説明してください
+      placeholder: |
+        例: タスクを完了した際に、ポイントが正しく付与されない。
+        優先度が「高」のタスクを完了しても、10ポイントしか付与されない（正しくは30ポイント）。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: 再現手順
+      description: バグを再現する手順を記述してください
+      placeholder: |
+        1. 優先度「高」のタスクを作成
+        2. タスクを完了する
+        3. ポイントを確認する
+        4. 10ポイントしか付与されていない（期待値: 30ポイント）
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: 期待される動作
+      description: 正常な場合の期待される動作を記述してください
+      placeholder: |
+        優先度「高」のタスクを完了すると、30ポイントが付与される。
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: 実際の動作
+      description: 実際に発生している動作を記述してください
+      placeholder: |
+        優先度「高」のタスクを完了しても、10ポイントしか付与されない。
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 深刻度
+      description: バグの深刻度を選択してください
+      options:
+        - 低（軽微な問題、回避可能）
+        - 中（機能に影響があるが回避可能）
+        - 高（機能が使用できない、回避困難）
+        - 緊急（システム全体に影響、即座に対応が必要）
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 環境情報
+      description: 発生環境の情報を記述してください
+      placeholder: |
+        - OS: macOS 14.0
+        - ブラウザ: Chrome 120.0
+        - バージョン: v0.1.0
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: スクリーンショット・ログ
+      description: 可能であれば、スクリーンショットやエラーログを添付してください
+      placeholder: |
+        [スクリーンショットをここに添付]
+        
+        エラーログ:
+        ```
+        [エラーログをここに貼り付け]
+        ```
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 補足情報
+      description: その他の補足情報があれば記述してください
+      placeholder: |
+        この問題は特定のユーザーでのみ発生するようです。
+        他のユーザーでは正常に動作しています。
+    validations:
+      required: false

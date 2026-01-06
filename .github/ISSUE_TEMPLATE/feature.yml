@@ -1,0 +1,415 @@
+name: 機能実装
+description: 新機能の実装を依頼するためのテンプレート（AI実装用）
+title: "[Feature] "
+labels: ["enhancement", "needs-design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 機能実装テンプレート
+        
+        このテンプレートは、AIがGitHub MCP経由でissueを作成し、実装するためのものです。
+        各セクションを詳細に記入してください。
+
+  - type: textarea
+    id: feature-overview
+    attributes:
+      label: 機能概要
+      description: 実装する機能の概要と目的を記述してください
+      placeholder: |
+        例: タスク完了時にポイントを付与する機能を実装する。
+        ユーザーがタスクを完了すると、優先度に応じてポイントが付与され、
+        累計ポイントが表示される。
+    validations:
+      required: true
+
+  - type: textarea
+    id: architecture-design
+    attributes:
+      label: アーキテクチャ設計
+      description: |
+        クリーンアーキテクチャに基づいた設計を記述してください。
+        各レイヤー（Domain/Application/Infrastructure/Presentation）での実装方針を記載。
+        Mermaid図を使用してアーキテクチャを可視化してください。
+      placeholder: |
+        ## レイヤー別実装方針
+        
+        ### Domain層
+        - エンティティ: Task, User
+        - 値オブジェクト: Point, Priority
+        - ビジネスルール: ポイント計算ロジック
+        
+        ### Application層
+        - ユースケース: AwardPointsUseCase
+        - DTO: AwardPointsDTO, PointsResponseDTO
+        
+        ### Infrastructure層
+        - リポジトリ: PointRepository
+        - サービス: PointCalculationService
+        
+        ### Presentation層
+        - コンポーネント: PointsDisplay, PointsAnimation
+        - フック: usePoints
+        
+        ## アーキテクチャ図
+        
+        ```mermaid
+        flowchart TD
+            A[Presentation Layer] -->|依存| B[Application Layer]
+            B -->|依存| C[Domain Layer]
+            D[Infrastructure Layer] -->|実装| B
+            B -.->|インターフェース経由| D
+        ```
+        
+        ## データフロー図
+        
+        ```mermaid
+        sequenceDiagram
+            participant User
+            participant UI as Presentation Layer
+            participant UC as Application Layer
+            participant Domain
+            participant Repo as Infrastructure Layer
+            participant DB as Database
+            
+            User->>UI: タスク完了
+            UI->>UC: CompleteTaskUseCase
+            UC->>Domain: Task.complete()
+            UC->>UC: AwardPointsUseCase
+            UC->>Repo: savePoints()
+            Repo->>DB: INSERT points
+            DB-->>Repo: 成功
+            Repo-->>UC: 完了
+            UC-->>UI: ポイント付与完了
+            UI-->>User: アニメーション表示
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: database-design
+    attributes:
+      label: データベース設計
+      description: |
+        Prismaスキーマの変更内容、マイグレーション計画、リレーションを記述してください。
+        Mermaid ER図を使用してデータベース構造を可視化してください。
+      placeholder: |
+        ## スキーマ変更
+        
+        ### 新規テーブル/カラム
+        - `points`テーブルを追加
+          - `id`: UUID (PK)
+          - `userId`: UUID (FK -> users.id)
+          - `amount`: Int
+          - `reason`: String
+          - `taskId`: UUID (FK -> tasks.id, nullable)
+          - `createdAt`: DateTime
+        
+        ### 既存テーブルの変更
+        - `users`テーブルに`totalPoints`カラムを追加（計算カラムまたはキャッシュ）
+        
+        ## ER図
+        
+        ```mermaid
+        erDiagram
+            User ||--o{ Task : has
+            User ||--o{ Point : earns
+            Task ||--o{ Point : generates
+            User ||--|| UserSettings : has
+            
+            User {
+                uuid id PK
+                string email
+                string name
+                int totalPoints
+            }
+            
+            Task {
+                uuid id PK
+                uuid userId FK
+                string title
+                enum priority
+                boolean completed
+            }
+            
+            Point {
+                uuid id PK
+                uuid userId FK
+                uuid taskId FK
+                int amount
+                string reason
+                datetime createdAt
+            }
+        ```
+        
+        ## マイグレーション計画
+        
+        1. `prisma/schema.prisma`を更新
+        2. `pnpm prisma migrate dev --name add_points_system`を実行
+        3. 既存データの移行（必要に応じて）
+        4. インデックスの追加: `userId`, `createdAt`
+        
+        ## インデックス設計
+        
+        - `points.userId`: ユーザーごとのポイント履歴検索
+        - `points.createdAt`: 時系列ソート
+        - `points.taskId`: タスクごとのポイント検索（オプション）
+    validations:
+      required: true
+
+  - type: textarea
+    id: security-considerations
+    attributes:
+      label: セキュリティ考慮事項
+      description: |
+        RLS（Row Level Security）ポリシー、入力検証、認証・認可、データ保護について記述してください。
+      placeholder: |
+        ## Row Level Security (RLS) ポリシー
+        
+        ### pointsテーブル
+        ```sql
+        -- ユーザーは自分のポイント履歴のみ閲覧可能
+        CREATE POLICY "Users can view own points"
+          ON points FOR SELECT
+          USING (auth.uid() = "userId");
+        
+        -- ポイントはシステム経由でのみ作成（ユーザー直接作成不可）
+        CREATE POLICY "System can insert points"
+          ON points FOR INSERT
+          WITH CHECK (false); -- アプリケーション層でのみ作成
+        
+        -- ポイントは削除不可
+        CREATE POLICY "Points cannot be deleted"
+          ON points FOR DELETE
+          USING (false);
+        ```
+        
+        ## 入力検証
+        
+        ### Domain層での検証
+        - `Point.amount`: 正の整数のみ許可（1以上）
+        - `Point.reason`: 最大200文字、必須
+        - ポイント計算ロジック: 優先度に基づく固定値（改ざん防止）
+        
+        ### Application層での検証
+        - ユーザーIDの存在確認
+        - タスクIDの存在確認（オプション）
+        - 重複ポイント付与の防止
+        
+        ## 認証・認可
+        
+        - ポイント付与は認証済みユーザーのみ
+        - ユーザーは自分のポイントのみ閲覧可能
+        - 管理者権限は不要（個人データのみ）
+        
+        ## データ保護
+        
+        - ポイント履歴は不変（immutable）
+        - ポイントの改ざんを防ぐため、直接更新不可
+        - 監査ログとして機能（削除不可）
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-plan
+    attributes:
+      label: 実装方針・手順
+      description: |
+        実装の詳細な手順、使用する技術・ライブラリ、ファイル構成を記述してください。
+      placeholder: |
+        ## 実装手順
+        
+        1. **Domain層の実装**
+           - `src/domain/entities/Point.ts`を作成
+           - `src/domain/value-objects/PointAmount.ts`を作成
+           - `src/domain/rules/PointCalculationRule.ts`を作成（優先度別ポイント計算）
+        
+        2. **Application層の実装**
+           - `src/application/interfaces/repositories/IPointRepository.ts`を作成
+           - `src/application/use-cases/points/AwardPointsUseCase.ts`を作成
+           - `src/application/dto/AwardPointsDTO.ts`を作成
+        
+        3. **Infrastructure層の実装**
+           - `src/infrastructure/repositories/PointRepository.ts`を作成
+           - Prismaスキーマを更新
+           - マイグレーションを実行
+        
+        4. **Presentation層の実装**
+           - `src/presentation/components/points/PointsDisplay.tsx`を作成
+           - `src/presentation/components/points/PointsAnimation.tsx`を作成
+           - `src/presentation/hooks/usePoints.ts`を作成
+        
+        5. **統合**
+           - タスク完了時にポイント付与ロジックを統合
+           - UIにポイント表示を追加
+        
+        ## 使用技術・ライブラリ
+        
+        - **状態管理**: React Hooks (useState, useEffect)
+        - **データフェッチ**: Next.js Server Actions または API Routes
+        - **アニメーション**: Framer Motion または CSS Animations
+        - **型安全性**: TypeScript strict mode
+        
+        ## ファイル構成
+        
+        ```
+        src/
+        ├── domain/
+        │   ├── entities/
+        │   │   └── Point.ts
+        │   ├── value-objects/
+        │   │   └── PointAmount.ts
+        │   └── rules/
+        │       └── PointCalculationRule.ts
+        ├── application/
+        │   ├── interfaces/repositories/
+        │   │   └── IPointRepository.ts
+        │   ├── use-cases/points/
+        │   │   └── AwardPointsUseCase.ts
+        │   └── dto/
+        │       ├── AwardPointsDTO.ts
+        │       └── PointsResponseDTO.ts
+        ├── infrastructure/
+        │   ├── repositories/
+        │   │   └── PointRepository.ts
+        │   └── mappers/
+        │       └── PointMapper.ts
+        └── presentation/
+            ├── components/points/
+            │   ├── PointsDisplay.tsx
+            │   └── PointsAnimation.tsx
+            └── hooks/
+                └── usePoints.ts
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: test-plan
+    attributes:
+      label: テスト計画
+      description: |
+        機能毎のテストコードの実装方針を記述してください。
+        単体テスト、統合テスト、E2Eテストを含めてください。
+      placeholder: |
+        ## テスト方針
+        
+        各機能に対して、以下のテストを実装します：
+        
+        ### 1. Domain層のテスト
+        
+        **ファイル**: `src/domain/entities/__tests__/Point.test.ts`
+        
+        - Pointエンティティの作成
+        - 不正なamount値の検証
+        - 不変性のテスト
+        
+        **ファイル**: `src/domain/rules/__tests__/PointCalculationRule.test.ts`
+        
+        - 優先度別ポイント計算のテスト
+          - LOW: 10ポイント
+          - MEDIUM: 20ポイント
+          - HIGH: 30ポイント
+          - URGENT: 50ポイント
+        
+        ### 2. Application層のテスト
+        
+        **ファイル**: `src/application/use-cases/points/__tests__/AwardPointsUseCase.test.ts`
+        
+        - 正常系: ポイント付与の成功
+        - 異常系: 存在しないユーザーID
+        - 異常系: 存在しないタスクID
+        - モックリポジトリを使用
+        
+        ### 3. Infrastructure層のテスト
+        
+        **ファイル**: `src/infrastructure/repositories/__tests__/PointRepository.test.ts`
+        
+        - データベースへの保存
+        - ユーザーIDでの検索
+        - トランザクション処理
+        
+        ### 4. Presentation層のテスト
+        
+        **ファイル**: `src/presentation/components/points/__tests__/PointsDisplay.test.tsx`
+        
+        - コンポーネントのレンダリング
+        - ポイント表示の確認
+        - アニメーションの動作確認
+        
+        **ファイル**: `src/presentation/hooks/__tests__/usePoints.test.ts`
+        
+        - フックの動作確認
+        - エラーハンドリング
+        
+        ### 5. 統合テスト
+        
+        **ファイル**: `src/__tests__/integration/points.test.ts`
+        
+        - タスク完了からポイント付与までの統合フロー
+        - データベースとの統合
+        
+        ### 6. E2Eテスト
+        
+        **ファイル**: `e2e/points.spec.ts` (Playwright)
+        
+        - ユーザーがタスクを完了
+        - ポイントが付与されることを確認
+        - UIにポイントが表示されることを確認
+        
+        ## テストカバレッジ目標
+        
+        - Domain層: 100%
+        - Application層: 90%以上
+        - Infrastructure層: 80%以上
+        - Presentation層: 70%以上
+        
+        ## テストツール
+        
+        - **単体テスト**: Vitest または Jest
+        - **E2Eテスト**: Playwright
+        - **モック**: Vitest mocks または MSW
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: 受け入れ基準
+      description: この機能が完了したと判断する基準を記述してください
+      placeholder: |
+        - [ ] Domain層のエンティティとビジネスルールが実装されている
+        - [ ] Application層のユースケースが実装されている
+        - [ ] Infrastructure層のリポジトリが実装されている
+        - [ ] Presentation層のコンポーネントとフックが実装されている
+        - [ ] データベーススキーマが更新され、マイグレーションが適用されている
+        - [ ] RLSポリシーが設定されている
+        - [ ] 単体テストが実装され、すべてパスしている
+        - [ ] 統合テストが実装され、すべてパスしている
+        - [ ] E2Eテストが実装され、すべてパスしている
+        - [ ] コードレビューが完了している
+        - [ ] ドキュメントが更新されている
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: 補足・参考情報
+      description: その他の補足情報、参考資料、関連issueなどを記述してください
+      placeholder: |
+        ## 関連ドキュメント
+        
+        - [仕様書](../docs/specification.md)
+        - [機能詳細仕様書](../docs/features.md)
+        - [データベーススキーマ設計書](../docs/database-schema.md)
+        - [アーキテクチャ設計書](../docs/architecture.md)
+        
+        ## 関連Issue
+        
+        - #XXX: タスク管理機能の実装
+        
+        ## 注意事項
+        
+        - ポイント計算ロジックは将来的に変更される可能性があるため、設定可能にすることを検討
+        - パフォーマンスを考慮し、ポイント履歴の大量取得時はページネーションを実装
