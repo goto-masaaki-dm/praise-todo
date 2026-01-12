@@ -1,0 +1,10 @@
+{
+  "enabledMcpjsonServers": [
+    "Context7",
+    "serena",
+    "github",
+    "supabase",
+    "playwright"
+  ],
+  "enableAllProjectMcpServers": true
+}

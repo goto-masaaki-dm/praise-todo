@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "Context7": {
-      "type": "sse",
+    "context7": {
+      "type": "http",
       "url": "https://mcp.context7.com/mcp",
       "headers": {
         "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY}"
@@ -18,15 +18,18 @@
       ]
     },
     "github": {
-      "type": "sse",
-      "url": "https://api.githubcopilot.com/mcp/",
-      "headers": {
-        "Authorization": "Bearer ${GITHUB_TOKEN}"
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
       }
     },
     "supabase": {
-      "type": "sse",
-      "url": "https://mcp.supabase.com/mcp?project_ref=tvfzoljjiteaohnrwucl"
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp"
     },
     "playwright": {
       "command": "npx",
